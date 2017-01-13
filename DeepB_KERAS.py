@@ -3,6 +3,14 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+
+# This ensures matplotlib does not need DISPLAY as csh envirement
+# I.e. you can run it on lxplus without X11
+# A different way is to make the change in the matplotlib.rc
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 from ReadDeepBs import *
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -40,12 +48,23 @@ sgd = SGD(lr=0.03, decay=1e-6,  momentum=0.9,  nesterov=True)
 from keras.optimizers import Adam
 adam = Adam(lr=0.0003)
 
+
+from keras.callbacks import History 
+history = History()
+
 model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
 #model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
 
 DeepBdata = read_btag_data(FLAGS.data_dir, one_hot=True, fake_data=FLAGS.fake_data)
-model.fit(DeepBdata.train.features, DeepBdata.train.labels, nb_epoch=250, batch_size=50000)
+
+# This stores the history of the training to e.g. allow to plot the learning curve
+from keras.callbacks import History 
+history = History()
+# the actual training
+model.fit(DeepBdata.train.features, DeepBdata.train.labels,validation_split=0.1, nb_epoch=1000, batch_size=50000, callbacks=[history], sample_weight = None )
 score = model.evaluate(DeepBdata.test.features, DeepBdata.test.labels, batch_size=50000)
+
+
 predict_test = model.predict( DeepBdata.test.features,batch_size=50000)
 predict_val =  model.predict( DeepBdata.validation.features,batch_size=50000)
 
@@ -67,4 +86,25 @@ json_string = model.to_json()
 text_file = open("Architecture_cMVA_v6.json", "w")
 text_file.write(json_string)
 text_file.close()
+
+#The below plots the learning curve
+print(history.history.keys())
+# summarize history for accuracy
+#plt.plot(history.history['acc'])
+#plt.plot(history.history['val_acc'])
+#plt.title('model accuracy')
+#plt.ylabel('accuracy')
+#plt.xlabel('epoch')
+#plt.legend(['train', 'test'], loc='upper left')
+
+#plt.show()
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('loss.pdf')
+#plt.show()
 
